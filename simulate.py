@@ -5,150 +5,16 @@ import numpy as np
 import seaborn as sns
 from matplotlib import pyplot as plt
 
-# N = 30
+import argparse
+import os
+import sys
+from ast import literal_eval
+from datetime import datetime
 
-# # roughly 2 edges per node
-# p = N/(N*(N-1)/2)
+from helpers import percolation_similarity_integration, percolation_similarity_threshold
+import graph_generation as test_graphs
 
-# graph = nx.fast_gnp_random_graph(N, p)
-
-
-# similarity_metrics = {
-# 	"jacard": nx.jaccard_coefficient(G, [0, 33]),
-# 	"simrank": nx.simrank_similarity(G, source=0, target=33),
-
-# }
-
-def get_k_largest_idx(matrix, k):
-	rows, cols = np.shape(matrix)
-
-	best_vals = []
-	best_indices = []
-
-	for i in range(k):
-		best = float('-inf')
-		best_row, best_col = -1, -1
-
-		for row in range(0, rows):
-			for col in range(row+1, cols):
-				if matrix[row][col] > best and (row, col) not in best_indices and matrix[row][col] not in best_vals:
-					best = matrix[row][col]
-					best_row, best_col = row, col
-
-		best_vals += [best]
-		best_indices += [(best_row, best_col)]
-
-	return list(zip([idx[0] for idx in best_indices], [idx[1] for idx in best_indices], best_vals))
-
-
-# p is measure of whether we should keep edge, p \in [0, 1]
-# returns matrix of nodes that are still connected
-def perturbed_graph_connectivity(graph, p):
-	nodes = list(graph)
-	total_nodes = len(nodes)
-
-
-	if p < 0 or p > 1:
-		raise Exception(f"p={p} is not within [0, 1]")
-
-	perturbed_graph = graph.copy()
-
-	for edge in graph.edges():
-		if random() > p:
-			perturbed_graph.remove_edge(edge[0], edge[1])
-
-
-	connected = np.zeros((total_nodes, total_nodes))
-
-	for source_node in range(0, total_nodes):
-		for target_node in range(source_node+1, total_nodes):
-			if nx.has_path(perturbed_graph, source_node, target_node):
-				connected[source_node][target_node] = 1
-			else:
-				connected[source_node][target_node] = 0
-
-	return connected
-
-
-def avg_perturbed_graph_connectivity(graph, p, n):
-	samples = []
-
-	for i in range(n):
-		samples.append(perturbed_graph_connectivity(graph, p))
-
-	return np.array(samples).mean(axis=0)
-
-
-# n = sample_size
-# numerical integral over p
-def percolation_similarity_integration(graph, n, p_interval=0.1):
-	nodes = list(graph)
-	total_nodes = len(nodes)
-
-	percolation_similarity = np.zeros((total_nodes, total_nodes))
-
-	p = p_interval
-	while p < 1:
-		percolation_similarity += p_interval*avg_perturbed_graph_connectivity(graph, p, n)
-		p += p_interval
-
-	return percolation_similarity
-
-
-#returns 3d matrix of size (1/p_interval, len(nodes, len(nodes)))
-def percolation_similarity_samples(graph, n, p_interval):
-	nodes = list(graph)
-	total_nodes = len(nodes)
-
-	samples = []
-
-	p = p_interval
-	while p < 1:
-		samples.append(avg_perturbed_graph_connectivity(graph, p, n))
-		p += p_interval 
-
-	return np.array(samples)
-
-
-
-# return p that is closest to get half nodes connected
-def percolation_similarity_linear_search(graph, n, p_interval=0.1):
-	samples = percolation_similarity_samples(graph, n, p_interval)
-
-	# print(samples.shape)
-	# print(samples[:, 0, 1])
-
-	# # plot of "p curve"
-	# for idx1, idx2 in [(0, 1), (32, 33)]:
-	# 	connectivity_along_p = samples[:, idx1, idx2]
-	# 	plt.plot([p_interval*k for k in range(1, len(connectivity_along_p)+1)], connectivity_along_p, '-o')
-	# 	plt.title(f"Indices {idx1} and {idx2}")
-	# 	plt.show()
-
-	normalized = 1-2*abs(samples - 0.5)
-
-	print(normalized.shape)
-
-	indices = np.argmax(normalized, axis=0)
-
-	print(indices)
-
-	p_closest_to_half = indices*p_interval
-
-
-	total_nodes = len(list(graph))
-
-	# this sets the p value for nodes that aren't connected at all to have p=1 (still unconnected) by default
-	for source_node in range(0, total_nodes):
-		for target_node in range(source_node+1, total_nodes):
-			if not nx.has_path(graph, source_node, target_node):
-				p_closest_to_half[source_node][target_node] = 1
-
-
-	# similarity measure, if connected as p=0, then very strong connectivity so strong similarity
-	return 1-p_closest_to_half
-
-
+available_metrics = ["jaccard", "simrank", "resistance", "ps_integration", "ps_threshold"]
 
 def similarity(graph, metric):
 	nodes = list(graph)
@@ -180,6 +46,55 @@ def similarity(graph, metric):
 	ax = sns.heatmap(similarities, linewidth=0.5, cmap="YlGn", mask=mask)
 	plt.title(metric)
 	plt.show()
+
+def __main__():
+	parser = argparse.ArgumentParser()
+
+	now_dir = datetime.now().strftime("%Y_%m_%d__%H_%M_%S")
+
+	parser.add_argument("-d", "--dir", default=now_dir)
+
+	parser.add_argument("-m", "--metrics", dest="metrics")
+	parser.add_argument("-g", "--graph", dest="graph", choices=test_graphs.graphs)
+
+	parser.add_argument("--clique_size", type=int, default=0)
+	parser.add_argument("--num_cliques", type=int, default=0)
+
+	parser.add_argument("--core_periphery_sizes", dest="cp_sizes")
+	parser.add_argument("--core_periphery_probs", dest="cp_probs")
+
+	parser.add_argument("--seed", type=int, default=0)
+
+	args = parser.parse_args()
+
+	metrics = args.metrics.split(",")
+	for metric in metrics:
+		if metric not in available_metrics:
+			raise Exception(f"{metric} not valid: choose something from {available_metrics}")
+
+	graph = None
+	if args.graph == "karate":
+		graph = test_graphs.karate()
+	if args.graph == "clique":
+		assert args.clique_size > 0
+		graph = test_graphs.clique(args.clique_size)
+	if args.graph == "connected_cliques":
+		assert args.clique_size > 0 and args.num_cliques > 0
+		graph = test_graphs.connected_cliques(args.clique_size, args.num_cliques)
+	if args.graph == "core_periphery":
+		cp_sizes = literal_eval(args.cp_sizes)
+		cp_probs = literal_eval(args.cp_probs)
+		assert len(cp_sizes) == len(cp_probs) and len(cp_sizes[0]) == len(cp_probs[0])
+		graph = test_graph.core_periphery(cp_sizes, cp_probs, seed=args.seed)
+
+	output_dir = os.path.join("./output", now_dir)
+
+	os.makedirs(output_dir, exist_ok=True)
+	with open(os.path.join(output_dir, "command.txt"), "w") as f:
+		f.write(f"{sys.argv}")
+
+
+__main__()
 
 
 karate = nx.karate_club_graph()
@@ -218,51 +133,10 @@ karate = nx.karate_club_graph()
 
 clique = nx.caveman_graph(1, 2)
 
-PS_linear_search = (percolation_similarity_linear_search(clique, 100, p_interval=0.01))
+PS_linear_search = (percolation_similarity_threshold(clique, 100, p_interval=0.01))
 
 
 mask = np.zeros_like(PS_linear_search)
 mask[np.tril_indices_from(mask, k=1)] = False
 ax = sns.heatmap(PS_linear_search, linewidth=0.5, cmap="YlGn", mask=mask)
 plt.show()
-
-# similarity(karate, "jaccard")
-
-
-
-
-
-
-# removal_p = 0.1
-
-# while removal_p < 1:
-# 	temp_graph = graph.copy()
-# 	for edge in temp_graph.edges():
-# 		print(edge)
-# 		temp_graph.remove_edge(*edge)
-
-
-# 	removal_p += 0.1
-
-
-# class Graph:
-
-# 	# adjacency matrix
-# 	# invert with probability p
-# 	# is connected
-# 	def __init__(self, adjacency):
-# 		self.adjacency = adjacency
-
-
-# class Erdos_Renyi_Graph:
-
-# 	def _zero_or_one(p):
-# 		if random.random() < p:
-# 			return 1
-# 		return 0
-
-# 	# generate graph with probability of edge existing being p
-# 	def __init__(self, size, p):
-# 		self.p = p
-
-# 		adj
