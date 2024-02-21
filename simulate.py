@@ -11,7 +11,7 @@ import sys
 from ast import literal_eval
 from datetime import datetime
 
-from helpers import percolation_similarity_integration, percolation_similarity_threshold
+from helpers import percolation_similarity_integration, percolation_similarity_threshold, get_rank_matrix, zero_out_lower_triangular
 import graph_generation as test_graphs
 
 available_metrics = ["jaccard", "simrank", "resistance", "ps_integration", "ps_threshold"]
@@ -22,18 +22,36 @@ metric_to_format = {"jaccard": "Jaccard Index", "simrank": "SimRank", "resistanc
 SAMPLE_SIZE = 100
 P_INTERVAL = 0.01
 
+
+# returns matrix of similarities for the given metric. all entries between 0 to 1, lower triangle part will be all zeros, and the diagonal is always 1
 def similarity(graph, metric):
 	nodes = list(graph)
 	total_nodes = len(nodes)
 	similarities = np.zeros((total_nodes, total_nodes))
 
 	mask = np.zeros_like(similarities)
-	mask[np.tril_indices_from(mask, k=0)] = True
+	mask[np.tril_indices_from(mask, k=1)] = True
 
 	if metric == "ps_threshold":
 		similarities = percolation_similarity_threshold(graph, SAMPLE_SIZE, p_interval=P_INTERVAL)
 	elif metric == "ps_integration":
 		similarities = percolation_similarity_threshold(graph, SAMPLE_SIZE, p_interval=P_INTERVAL)
+	elif metric == "resistance":
+		distances = np.zeros((total_nodes, total_nodes))
+		for i in range(0, total_nodes):
+			for j in range(i, total_nodes):
+				if i != j:
+					distances[i][j] = nx.resistance_distance(graph, nodeA=i, nodeB=j)
+				else:
+					# two nodes that are the same must have distance of 0
+					distances[i][i] = 0
+
+		# normalize so it's 0 to 1
+		highest_distance = np.max(distances)
+		similarities = 1-distances/highest_distance
+
+		similarities = zero_out_lower_triangular(similarities)
+
 	else:
 		for i in range(0, total_nodes):
 			for j in range(i, total_nodes):
@@ -45,12 +63,7 @@ def similarity(graph, metric):
 					similarity = nx.simrank_similarity(graph, source=i, target=j)
 					# print(list(similarity)[0][2])
 					similarities[i][j] = similarity
-				if metric == "resistance":
-					if i != j:
-						similarity = nx.resistance_distance(graph, nodeA=i, nodeB=j)
-						similarities[i][j] = -1*similarity
-					else:
-						mask[i][i] = True
+
 
 	return similarities, mask
 
@@ -67,6 +80,13 @@ def simulate(graph, metrics, output_dir):
 		ax = sns.heatmap(similarities, linewidth=0.5, cmap="YlGn", mask=mask, vmin=0, vmax=1)
 		plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
 		plt.savefig(os.path.join(output_dir, f"{metric}-heatmap"))
+		plt.clf()
+
+
+		rank_matrix = get_rank_matrix(similarities)
+		ax = sns.heatmap(rank_matrix, linewidth=0.5, cmap = "RdYlGn", mask=mask)
+		plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
+		plt.savefig(os.path.join(output_dir, f"{metric}-rank-heatmap"))
 		plt.clf()
 
 
@@ -90,7 +110,7 @@ def __main__():
 
 	args = parser.parse_args()
 
-	if args.metrics = "all":
+	if args.metrics == "all":
 		metrics = available_metrics
 	else:
 		metrics = args.metrics.split(",")

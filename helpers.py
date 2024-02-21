@@ -6,6 +6,23 @@ from matplotlib import pyplot as plt
 
 
 
+
+def zero_out_lower_triangular(matrix):
+	return matrix - np.tril(matrix, -1)
+
+# given a 2d-matrix, returns 2d-matrix with rank of items
+def get_rank_matrix(matrix):
+	# set values below diagonal to be -1, so it doesn't mess up other entries which are 0 in the ranking
+	matrix = matrix - np.tril(matrix+1, -1)
+
+	rank_matrix = matrix.ravel().argsort().argsort().reshape(matrix.shape)
+
+	#values under diagonal will be ranked the lowest, so we want to correct for that
+	n = len(rank_matrix)
+	normalized_rank_matrix = rank_matrix - (n-1)*n/2
+
+	return normalized_rank_matrix
+
 # given a 2d-matrix, returns a list of length k of the indices with the highest values and what the values are
 # ex. get_k_largest_idx([[100, 102], [103, 101]], 2) --> [(1, 0, 103), (0, 1, 102)]
 def get_k_largest_idx(matrix, k):
