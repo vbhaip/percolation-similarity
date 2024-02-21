@@ -72,7 +72,7 @@ def avg_perturbed_graph_connectivity(graph, edge_removal_rate, n):
 
 # n = sample_size
 # numerical integral over p
-def percolation_similarity_integration(graph, n, p_interval=0.1):
+def percolation_similarity_integration(graph, sample_size, p_interval=0.1):
 	nodes = list(graph)
 	total_nodes = len(nodes)
 
@@ -80,14 +80,14 @@ def percolation_similarity_integration(graph, n, p_interval=0.1):
 
 	p = p_interval
 	while p < 1:
-		percolation_similarity += p_interval*avg_perturbed_graph_connectivity(graph, p, n)
+		percolation_similarity += p_interval*avg_perturbed_graph_connectivity(graph, p, sample_size)
 		p += p_interval
 
 	return percolation_similarity
 
 
 #returns 3d matrix of size (1/p_interval, len(nodes, len(nodes)))
-def percolation_similarity_samples(graph, n, p_interval):
+def percolation_similarity_samples(graph, sample_size, p_interval):
 	nodes = list(graph)
 	total_nodes = len(nodes)
 
@@ -95,7 +95,7 @@ def percolation_similarity_samples(graph, n, p_interval):
 
 	p = p_interval
 	while p < 1:
-		samples.append(avg_perturbed_graph_connectivity(graph, p, n))
+		samples.append(avg_perturbed_graph_connectivity(graph, p, sample_size))
 		p += p_interval 
 
 	return np.array(samples)
