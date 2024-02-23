@@ -10,6 +10,7 @@ import os
 import sys
 from ast import literal_eval
 from datetime import datetime
+import time
 
 from helpers import percolation_similarity_integration, percolation_similarity_threshold, get_rank_matrix, zero_out_lower_triangular
 import graph_generation as test_graphs
@@ -74,8 +75,12 @@ def similarity(graph, metric):
 
 
 def simulate(graph, metrics, output_dir):
+	metric_times = {}
 	for metric in metrics:
+		start = time.time()
 		similarities, mask = similarity(graph, metric)
+
+		metric_times[metric] = time.time() - start
 
 		ax = sns.heatmap(similarities, linewidth=0.5, cmap="YlGn", mask=mask, vmin=0, vmax=1)
 		plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
@@ -88,6 +93,13 @@ def simulate(graph, metrics, output_dir):
 		plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
 		plt.savefig(os.path.join(output_dir, f"{metric}-rank-heatmap"))
 		plt.clf()
+
+
+	sorted_metrics = sorted(metrics, key=lambda x: metric_times[x])
+
+	with open(os.path.join(output_dir, "metric_data.txt"), "w") as f:
+		for metric in sorted_metrics:
+			f.write(f"{metric}:\t {metric_times[metric]}\n")
 
 
 def __main__():
@@ -103,8 +115,8 @@ def __main__():
 	parser.add_argument("--clique_size", type=int, default=0)
 	parser.add_argument("--num_cliques", type=int, default=0)
 
-	parser.add_argument("--core_periphery_sizes", dest="cp_sizes")
-	parser.add_argument("--core_periphery_probs", dest="cp_probs")
+	parser.add_argument("--core_periphery_sizes", "--cp_sizes", dest="cp_sizes")
+	parser.add_argument("--core_periphery_probs", "--cp_probs", dest="cp_probs")
 
 	parser.add_argument("--seed", type=int, default=0)
 
@@ -133,8 +145,8 @@ def __main__():
 	if args.graph == "core_periphery":
 		cp_sizes = literal_eval(args.cp_sizes)
 		cp_probs = literal_eval(args.cp_probs)
-		assert len(cp_sizes) == len(cp_probs) and len(cp_sizes[0]) == len(cp_probs[0])
-		graph = test_graph.core_periphery(cp_sizes, cp_probs, seed=args.seed)
+		assert len(cp_sizes) == len(cp_probs) and len(cp_sizes) == len(cp_probs[0])
+		graph = test_graphs.core_periphery(cp_sizes, cp_probs, seed=args.seed)
 		graph.name = f"Core Periphery"
 
 	output_dir = os.path.join("./output", now_dir)
@@ -147,48 +159,3 @@ def __main__():
 
 
 __main__()
-
-
-# karate = nx.karate_club_graph()
-# # similarity(karate, "simrank")
-
-# # print(perturbed_graph_connectivity(karate, 0.2))
-
-# # ------------
-# # percolation_similarity_0_2 = (percolation_similarity(karate, 100, p_interval=0.05))
-# # print(get_k_largest_idx(percolation_similarity_0_2, 5))
-
-
-# # ax = sns.heatmap(percolation_similarity_0_2, linewidth=0.5, cmap="YlGn")
-# # plt.show()
-# # -----------
-
-# # sizes = [10, 10]
-# # probs = [[0.8, 0.5], [0.5, 0.1]]
-# # core_periphery = nx.stochastic_block_model(sizes, probs, seed=0)
-
-# # PS_core_periphery = (percolation_similarity_integration(core_periphery, 20, p_interval=0.1))
-# # # print(get_k_largest_idx(PS_core_periphery, 5))
-
-
-# # PS_linear_search = (percolation_similarity_linear_search(core_periphery, 100, p_interval=0.01))
-
-
-# # mask = np.zeros_like(PS_linear_search)
-# # mask[np.tril_indices_from(mask, k=1)] = True
-# # ax = sns.heatmap(PS_linear_search, linewidth=0.5, cmap="YlGn", mask=mask)
-# # plt.show()
-
-# # similarity(core_periphery, "jaccard")
-
-# # -------
-
-# clique = nx.caveman_graph(1, 2)
-
-# PS_linear_search = (percolation_similarity_threshold(clique, 100, p_interval=0.01))
-
-
-# mask = np.zeros_like(PS_linear_search)
-# mask[np.tril_indices_from(mask, k=1)] = False
-# ax = sns.heatmap(PS_linear_search, linewidth=0.5, cmap="YlGn", mask=mask)
-# plt.show()

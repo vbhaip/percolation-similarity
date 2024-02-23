@@ -5,8 +5,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-
-
 def zero_out_lower_triangular(matrix):
 	return matrix - np.tril(matrix, -1)
 

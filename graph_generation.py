@@ -5,7 +5,7 @@ import numpy as np
 
 graphs = ["karate", "clique", "core_periphery", "connected_cliques"]
 
-def core_periphery(sizes, probabilities, seed=0):
+def core_periphery(sizes, probs, seed=0):
 	return nx.stochastic_block_model(sizes, probs, seed=seed)
 
 def clique(size):
