@@ -1,6 +1,7 @@
 from random import random
 import networkx as nx
 import numpy as np
+from scipy.stats import rankdata
 
 from matplotlib import pyplot as plt
 
@@ -13,7 +14,8 @@ def get_rank_matrix(matrix):
 	# set values below diagonal to be -1, so it doesn't mess up other entries which are 0 in the ranking
 	matrix = matrix - np.tril(matrix+1, -1)
 
-	rank_matrix = matrix.ravel().argsort().argsort().reshape(matrix.shape)
+	# rank_matrix = matrix.ravel().argsort().argsort().reshape(matrix.shape)
+	rank_matrix = (rankdata(matrix.ravel(),method='min')-1).reshape(matrix.shape)
 
 	#values under diagonal will be ranked the lowest, so we want to correct for that
 	n = len(rank_matrix)
@@ -65,12 +67,14 @@ def perturbed_graph_connectivity(graph, edge_removal_rate):
 
 	connected = np.zeros((total_nodes, total_nodes))
 
-	for source_node in range(0, total_nodes):
-		for target_node in range(source_node+1, total_nodes):
+	for i, source_node in enumerate(list(graph)):
+		for j, target_node in enumerate(list(graph)):
+			if i > j:
+				continue
 			if nx.has_path(perturbed_graph, source_node, target_node):
-				connected[source_node][target_node] = 1
+				connected[i][j] = 1
 			else:
-				connected[source_node][target_node] = 0
+				connected[i][j] = 0
 
 	return connected
 
@@ -133,17 +137,19 @@ def percolation_similarity_threshold(graph, n, p_interval=0.1):
 	total_nodes = len(list(graph))
 
 	# this sets the p value for nodes that aren't connected at all to have p=1 (still unconnected) by default
-	for source_node in range(0, total_nodes):
-		for target_node in range(source_node+1, total_nodes):
+	for i, source_node in enumerate(list(graph)):
+		for j, target_node in enumerate(list(graph)):
+			if i > j:
+				continue
 			if not nx.has_path(graph, source_node, target_node):
-				p_closest_to_half[source_node][target_node] = 1
+				p_closest_to_half[i][j] = 1
 
 
 	# similarity measure, if connected as p=0, then very strong connectivity so strong similarity
 	return 1-p_closest_to_half
 
 
-# if no indices passed in, generates everything
+# display p curve
 def generate_p_curve(graph, n, indices, p_interval=0.1):
 	samples = percolation_similarity_samples(graph, n, p_interval)
 
@@ -152,3 +158,21 @@ def generate_p_curve(graph, n, indices, p_interval=0.1):
 		plt.plot([p_interval*k for k in range(1, len(connectivity_along_p)+1)], connectivity_along_p, '-o')
 		plt.title(f"Indices {idx1} and {idx2}")
 		plt.show()
+
+
+#find the top k biggest differences in ranked data, and return results
+def find_differences(rank_matrix_1, rank_matrix_2, k = 10):
+	rm1 = rank_matrix_1
+	rm2 = rank_matrix_2
+
+	diff = abs(rm1 - rm2)
+
+	indices = get_k_largest_idx(diff, k)
+
+	output = []
+
+	for (row, col, val) in indices:
+		output.append((row, col, rm1[row][col], rm2[row][col]))
+
+	return output
+
