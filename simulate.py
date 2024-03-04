@@ -18,7 +18,7 @@ import graph_generation as test_graphs
 available_metrics = ["jaccard", "simrank", "resistance", "ps_integration", "ps_threshold"]
 
 metric_to_format = {"jaccard": "Jaccard Index", "simrank": "SimRank", "resistance": "Resistance distance", 
-	"ps_integration": "Percolation Similarity by Integration", "ps_threshold": "Percolation Similarity by Threshold"}
+	"ps_integration": "PS by Integration", "ps_threshold": "PS by Threshold"}
 
 SAMPLE_SIZE = 100
 P_INTERVAL = 0.01
@@ -90,6 +90,73 @@ def similarity(graph, metric):
 	# ax = sns.heatmap(similarities, linewidth=0.5, cmap="YlGn", mask=mask)
 	# plt.title(metric)
 	# plt.show()
+
+
+def simulate_one_plot(graph, metrics, output_dir):
+	metric_times = {}
+	metric_to_similarity_rank = {}
+
+	fig, axes = plt.subplots(2, len(metrics),figsize=(5*len(metrics), 5*2))
+	fig.suptitle(f"{graph.name}", fontsize=20)
+
+	for ind, metric in enumerate(metrics):
+		start = time.time()
+		similarities, mask = similarity(graph, metric)
+		metric_times[metric] = time.time() - start
+
+		cbar = (ind == len(metrics)-1)
+
+		ax = sns.heatmap(similarities, linewidth=0.5, cmap="YlGn", mask=mask, vmin=0, vmax=1, ax=axes[0][ind], cbar=cbar, cbar_kws={'label': 'Similarity Metric Value'})
+		ax.set_title(f"{metric_to_format[metric]}", fontsize=15)
+		ax.tick_params(axis='both', which='major', labelsize=10)
+
+
+		rank_matrix = get_rank_matrix(similarities)
+		if graph.name == "Zachary's Karate Club":
+			rank_matrix_community = matrix_map(rank_matrix, karate_index_map)
+			ticklabels = karate_community_indices_1+karate_community_indices_2
+
+			ax = sns.heatmap(rank_matrix_community, linewidth=0.5, cmap = "RdYlGn", mask=mask, vmin=0, vmax=(len(rank_matrix_community)-1)*len(rank_matrix_community)/2-1, xticklabels=ticklabels, yticklabels=ticklabels, ax=axes[1][ind], cbar=cbar, cbar_kws={'label': 'Similarity Metric Relative Ranking'})
+
+			ax.set_yticklabels(ticklabels, size=10)
+			ax.set_xticklabels(ticklabels, size=10)
+
+			# plt.title(f"{metric_to_format[metric]} for {graph.name} Graph Ordered By Community")
+
+
+		else:
+			ax = sns.heatmap(rank_matrix, linewidth=0.5, cmap = "RdYlGn", mask=mask, vmin=0, vmax=(len(rank_matrix)-1)*len(rank_matrix)/2-1, ax=axes[1][ind], cbar=cbar, cbar_kws={'label': 'Relative Ranking'})
+			ax.tick_params(axis='both', which='major', labelsize=10)
+			# plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
+
+
+		metric_to_similarity_rank[metric] = rank_matrix
+
+	plt.savefig(os.path.join(output_dir, f"all-plots"))
+	plt.clf()
+
+	for i in range(0, len(metrics)-1):
+		for j in range(i+1, len(metrics)):
+			m1 = metrics[i]
+			m2 = metrics[j]
+
+			diff = find_differences(metric_to_similarity_rank[m1], metric_to_similarity_rank[m2])
+
+			with open(os.path.join(output_dir, "rank_differences.txt"), "a") as f:
+				f.write(f"{m1}, {m2}\n")
+				f.write("_________\n")
+				for (row, col, r1, r2) in diff:
+					f.write(f"{row}, {col}: {r1}, {r2}\n")
+				f.write("\n\n")
+
+
+
+	sorted_metrics = sorted(metrics, key=lambda x: metric_times[x])
+
+	with open(os.path.join(output_dir, "metric_data.txt"), "w") as f:
+		for metric in sorted_metrics:
+			f.write(f"{metric}:\t {metric_times[metric]}\n")
+
 
 
 def simulate(graph, metrics, output_dir):
@@ -174,6 +241,8 @@ def __main__():
 
 	parser.add_argument("--seed", type=int, default=0)
 
+	parser.add_argument("--one_plot", action='store_true')
+
 	args = parser.parse_args()
 
 	if args.metrics == "all":
@@ -227,7 +296,10 @@ def __main__():
 	with open(os.path.join(output_dir, "command.txt"), "w") as f:
 		f.write(f"{sys.argv}")
 
-	simulate(graph, metrics, output_dir)
+	if args.one_plot:
+		simulate_one_plot(graph, metrics, output_dir)
+	else:
+		simulate(graph, metrics, output_dir)
 
 
 __main__()
