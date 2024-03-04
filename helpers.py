@@ -6,8 +6,22 @@ from scipy.stats import rankdata
 from matplotlib import pyplot as plt
 
 
+
 def zero_out_lower_triangular(matrix):
 	return matrix - np.tril(matrix, -1)
+
+def matrix_map(matrix, index_map):
+	new_matrix = np.zeros_like(matrix)
+
+	for row in range(0, len(matrix)):
+		for col in range(0, len(matrix[0])):
+			row_mapped = index_map[row]
+			col_mapped = index_map[col]
+
+			# use max bc we have upper triangular matrix
+			new_matrix[row][col] = max(matrix[row_mapped][col_mapped], matrix[col_mapped][row_mapped])
+
+	return zero_out_lower_triangular(new_matrix)
 
 # given a 2d-matrix, returns 2d-matrix with rank of items
 def get_rank_matrix(matrix):

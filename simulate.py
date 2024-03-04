@@ -12,7 +12,7 @@ from ast import literal_eval
 from datetime import datetime
 import time
 
-from helpers import percolation_similarity_integration, percolation_similarity_threshold, get_rank_matrix, zero_out_lower_triangular, find_differences
+from helpers import percolation_similarity_integration, percolation_similarity_threshold, get_rank_matrix, zero_out_lower_triangular, find_differences, matrix_map, get_k_largest_idx
 import graph_generation as test_graphs
 
 available_metrics = ["jaccard", "simrank", "resistance", "ps_integration", "ps_threshold"]
@@ -22,6 +22,22 @@ metric_to_format = {"jaccard": "Jaccard Index", "simrank": "SimRank", "resistanc
 
 SAMPLE_SIZE = 100
 P_INTERVAL = 0.01
+
+
+karate_community_indices_1 = [0,1,2,3,4,5,6,7,8,10,11,12,13,16,17,19,21]
+karate_community_indices_2 = [9,14,15,18,20,22,23,24,25,26,27,28,29,30,31,32,33]
+
+
+karate_index_map = {}
+
+count = 0
+for i in karate_community_indices_1:
+	karate_index_map[count] = i
+	count += 1
+
+for i in karate_community_indices_2:
+	karate_index_map[count] = i
+	count += 1
 
 
 # returns matrix of similarities for the given metric. all entries between 0 to 1, lower triangle part will be all zeros, and the diagonal is always 1
@@ -96,6 +112,23 @@ def simulate(graph, metrics, output_dir):
 		plt.savefig(os.path.join(output_dir, f"{metric}-rank-heatmap"))
 		plt.clf()
 
+		if graph.name == "Zachary's Karate Club":
+			rank_matrix_community = matrix_map(rank_matrix, karate_index_map)
+			ticklabels = karate_community_indices_1+karate_community_indices_2
+
+			ax = sns.heatmap(rank_matrix_community, linewidth=0.5, cmap = "RdYlGn", mask=mask, xticklabels=ticklabels, yticklabels=ticklabels)
+
+			ax.set_yticklabels(ticklabels, size=6)
+			ax.set_xticklabels(ticklabels, size=6)
+
+			plt.title(f"{metric_to_format[metric]} for {graph.name} Graph Ordered By Community")
+			plt.savefig(os.path.join(output_dir, f"{metric}-rank-community-heatmap"))
+			plt.clf()
+
+			print(metric)
+			print(get_k_largest_idx(similarities, 20))
+
+			print("\n\n")
 		metric_to_similarity_rank[metric] = rank_matrix
 
 
