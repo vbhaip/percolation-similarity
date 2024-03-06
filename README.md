@@ -15,7 +15,7 @@ Runs all the metrics on Zachary's Karate Club Network. Output all the plots on o
 Run Jaccard Index and Resistance Distance metrics on Clique of size 5. Output to a directory called 'output/graphs'.
 
 `python3 simulate.py --metric all -g core_periphery --cp_sizes "[20,20]" --cp_probs "[[0.9, 0.5], [0.5, 0.1]]" --seed 7`
-Runs all metrics on a stochastic block model graph with two communitys of sizes 20 and 20, with the specified probability block matrix.
+Runs all metrics on a stochastic block model graph with two communities of sizes 20 and 20, with the specified probability block matrix.
 
 
 ### Outputs
