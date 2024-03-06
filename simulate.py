@@ -214,7 +214,7 @@ def __main__():
 
 	parser.add_argument("-d", "--dir", default=now_dir)
 
-	parser.add_argument("-m", "--metrics", dest="metrics")
+	parser.add_argument("-m", "--metrics", dest="metrics", help=f"Comma separated (no space) metrics from {available_metrics}, or use 'all'")
 	parser.add_argument("-g", "--graph", dest="graph", choices=test_graphs.graphs)
 
 	parser.add_argument("--clique_size", type=int, default=0)
@@ -274,7 +274,7 @@ def __main__():
 		graph = test_graphs.clique_missing_edge(args.clique_size)
 		graph.name = f"{args.clique_size}-Clique Missing One Edge"
 
-	output_dir = os.path.join("./output", now_dir)
+	output_dir = os.path.join("./output", args.dir)
 
 	os.makedirs(output_dir, exist_ok=True)
 	with open(os.path.join(output_dir, "command.txt"), "w") as f:
