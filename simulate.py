@@ -102,32 +102,26 @@ def simulate_one_plot(graph, metrics, output_dir):
 	for ind, metric in enumerate(metrics):
 		start = time.time()
 		similarities, mask = similarity(graph, metric)
+		rank_matrix = get_rank_matrix(similarities)
+
 		metric_times[metric] = time.time() - start
 
 		cbar = (ind == len(metrics)-1)
 
-		ax = sns.heatmap(similarities, linewidth=0.5, cmap="YlGn", mask=mask, vmin=0, vmax=1, ax=axes[0][ind], cbar=cbar, cbar_kws={'label': 'Similarity Metric Value'})
-		ax.set_title(f"{metric_to_format[metric]}", fontsize=15)
-		ax.tick_params(axis='both', which='major', labelsize=10)
-
-
-		rank_matrix = get_rank_matrix(similarities)
+		ticklabels = 'auto'
 		if graph.name == "Zachary's Karate Club":
-			rank_matrix_community = matrix_map(rank_matrix, karate_index_map)
 			ticklabels = karate_community_indices_1+karate_community_indices_2
+			similarities = matrix_map(similarities, karate_index_map)
+			rank_matrix = matrix_map(rank_matrix, karate_index_map)
 
-			ax = sns.heatmap(rank_matrix_community, linewidth=0.5, cmap = "RdYlGn", mask=mask, vmin=0, vmax=(len(rank_matrix_community)-1)*len(rank_matrix_community)/2-1, xticklabels=ticklabels, yticklabels=ticklabels, ax=axes[1][ind], cbar=cbar, cbar_kws={'label': 'Similarity Metric Relative Ranking'})
-
-			ax.set_yticklabels(ticklabels, size=10)
-			ax.set_xticklabels(ticklabels, size=10)
-
-			# plt.title(f"{metric_to_format[metric]} for {graph.name} Graph Ordered By Community")
+		ax = sns.heatmap(similarities, linewidth=0.5, cmap="YlGn", mask=mask, vmin=0, vmax=1, xticklabels=ticklabels, yticklabels=ticklabels, ax=axes[0][ind], cbar=cbar, cbar_kws={'label': 'Similarity Metric Value'})
+		ax.set_title(f"{metric_to_format[metric]}", fontsize=15)
+		ax.tick_params(axis='both', which='major', labelsize=6)
 
 
-		else:
-			ax = sns.heatmap(rank_matrix, linewidth=0.5, cmap = "RdYlGn", mask=mask, vmin=0, vmax=(len(rank_matrix)-1)*len(rank_matrix)/2-1, ax=axes[1][ind], cbar=cbar, cbar_kws={'label': 'Relative Ranking'})
-			ax.tick_params(axis='both', which='major', labelsize=10)
-			# plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
+		ax = sns.heatmap(rank_matrix, linewidth=0.5, cmap = "RdYlGn", mask=mask, vmin=0, vmax=(len(rank_matrix)-1)*len(rank_matrix)/2-1, xticklabels=ticklabels, yticklabels=ticklabels, ax=axes[1][ind], cbar=cbar, cbar_kws={'label': 'Relative Ranking'})
+		ax.tick_params(axis='both', which='major', labelsize=6)
+		# plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
 
 
 		metric_to_similarity_rank[metric] = rank_matrix
@@ -165,37 +159,45 @@ def simulate(graph, metrics, output_dir):
 	for metric in metrics:
 		start = time.time()
 		similarities, mask = similarity(graph, metric)
+		rank_matrix = get_rank_matrix(similarities)
+
 		metric_times[metric] = time.time() - start
 
-		ax = sns.heatmap(similarities, linewidth=0.5, cmap="YlGn", mask=mask, vmin=0, vmax=1)
+		ticklabels = 'auto'
+		if graph.name == "Zachary's Karate Club":
+			ticklabels = karate_community_indices_1+karate_community_indices_2
+			similarities = matrix_map(similarities, karate_index_map)
+			rank_matrix = matrix_map(rank_matrix, karate_index_map)
+
+		ax = sns.heatmap(similarities, linewidth=0.5, cmap="YlGn", mask=mask, vmin=0, vmax=1, xticklabels=ticklabels, yticklabels=ticklabels, cbar_kws={'label': 'Similarity Metric Value'})
 		plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
 		plt.savefig(os.path.join(output_dir, f"{metric}-heatmap"))
 		plt.clf()
 
 
-		rank_matrix = get_rank_matrix(similarities)
-		ax = sns.heatmap(rank_matrix, linewidth=0.5, cmap = "RdYlGn", mask=mask)
+		
+		ax = sns.heatmap(rank_matrix, linewidth=0.5, cmap = "RdYlGn", mask=mask, vmin=0, vmax=(len(rank_matrix)-1)*len(rank_matrix)/2-1, xticklabels=ticklabels, yticklabels=ticklabels, cbar_kws={'label': 'Relative Ranking'})
 		plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
 		plt.savefig(os.path.join(output_dir, f"{metric}-rank-heatmap"))
 		plt.clf()
 
-		if graph.name == "Zachary's Karate Club":
-			rank_matrix_community = matrix_map(rank_matrix, karate_index_map)
-			ticklabels = karate_community_indices_1+karate_community_indices_2
+		# if graph.name == "Zachary's Karate Club":
+		# 	rank_matrix_community = matrix_map(rank_matrix, karate_index_map)
+		# 	ticklabels = karate_community_indices_1+karate_community_indices_2
 
-			ax = sns.heatmap(rank_matrix_community, linewidth=0.5, cmap = "RdYlGn", mask=mask, xticklabels=ticklabels, yticklabels=ticklabels)
+		# 	ax = sns.heatmap(rank_matrix_community, linewidth=0.5, cmap = "RdYlGn", mask=mask, xticklabels=ticklabels, yticklabels=ticklabels)
 
-			ax.set_yticklabels(ticklabels, size=6)
-			ax.set_xticklabels(ticklabels, size=6)
+		# 	ax.set_yticklabels(ticklabels, size=6)
+		# 	ax.set_xticklabels(ticklabels, size=6)
 
-			plt.title(f"{metric_to_format[metric]} for {graph.name} Graph Ordered By Community")
-			plt.savefig(os.path.join(output_dir, f"{metric}-rank-community-heatmap"))
-			plt.clf()
+		# 	plt.title(f"{metric_to_format[metric]} for {graph.name} Graph Ordered By Community")
+		# 	plt.savefig(os.path.join(output_dir, f"{metric}-rank-community-heatmap"))
+		# 	plt.clf()
 
-			print(metric)
-			print(get_k_largest_idx(similarities, 20))
+		# 	print(metric)
+		# 	print(get_k_largest_idx(similarities, 20))
 
-			print("\n\n")
+		# 	print("\n\n")
 		metric_to_similarity_rank[metric] = rank_matrix
 
 
