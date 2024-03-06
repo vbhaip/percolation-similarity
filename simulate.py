@@ -52,7 +52,7 @@ def similarity(graph, metric):
 	if metric == "ps_threshold":
 		similarities = percolation_similarity_threshold(graph, SAMPLE_SIZE, p_interval=P_INTERVAL)
 	elif metric == "ps_integration":
-		similarities = percolation_similarity_threshold(graph, SAMPLE_SIZE, p_interval=P_INTERVAL)
+		similarities = percolation_similarity_integration(graph, SAMPLE_SIZE, p_interval=P_INTERVAL)
 	elif metric == "resistance":
 		distances = np.zeros((total_nodes, total_nodes))
 		for i, node_i in enumerate(list(graph)):
@@ -121,7 +121,6 @@ def simulate_one_plot(graph, metrics, output_dir):
 
 		ax = sns.heatmap(rank_matrix, linewidth=0.5, cmap = "RdYlGn", mask=mask, vmin=0, vmax=(len(rank_matrix)-1)*len(rank_matrix)/2-1, xticklabels=ticklabels, yticklabels=ticklabels, ax=axes[1][ind], cbar=cbar, cbar_kws={'label': 'Relative Ranking'})
 		ax.tick_params(axis='both', which='major', labelsize=6)
-		# plt.title(f"{metric_to_format[metric]} for {graph.name} Graph")
 
 
 		metric_to_similarity_rank[metric] = rank_matrix
@@ -181,23 +180,6 @@ def simulate(graph, metrics, output_dir):
 		plt.savefig(os.path.join(output_dir, f"{metric}-rank-heatmap"))
 		plt.clf()
 
-		# if graph.name == "Zachary's Karate Club":
-		# 	rank_matrix_community = matrix_map(rank_matrix, karate_index_map)
-		# 	ticklabels = karate_community_indices_1+karate_community_indices_2
-
-		# 	ax = sns.heatmap(rank_matrix_community, linewidth=0.5, cmap = "RdYlGn", mask=mask, xticklabels=ticklabels, yticklabels=ticklabels)
-
-		# 	ax.set_yticklabels(ticklabels, size=6)
-		# 	ax.set_xticklabels(ticklabels, size=6)
-
-		# 	plt.title(f"{metric_to_format[metric]} for {graph.name} Graph Ordered By Community")
-		# 	plt.savefig(os.path.join(output_dir, f"{metric}-rank-community-heatmap"))
-		# 	plt.clf()
-
-		# 	print(metric)
-		# 	print(get_k_largest_idx(similarities, 20))
-
-		# 	print("\n\n")
 		metric_to_similarity_rank[metric] = rank_matrix
 
 
