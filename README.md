@@ -1,6 +1,6 @@
 # Percolation Similarity
 
-OMMS dissertation project for similarity metric on networks measuring information flow.
+This repo contains my work for the OMMS (Oxford Masters in Math) dissertation, supervised by Professor Renaud Lambiotte. It evaluates a new type of similarity metric on networks measuring information flow. The full dissertation can be read at [paper.pdf](paper.pdf).
 
 ## Getting Started
 
